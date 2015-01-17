@@ -3,24 +3,10 @@
 #include <string.h>
 
 #include "dht_client.h"
+#include "dht.h"
 
-static char servers[MAX_SERVERS_NO][MAX_SERVER_LEN];
 static char *usage = "DHT. Usage:\n> put key value;\n\
 > get key;\n> exit;";
-
-/* Execute the PUT command */
-static void put_cmd(char *key, char *val)
-{
-	printf("Put command, key %s, val %s.\n", key, val);
-}
-
-
-/* Execute the PUT command */
-static void get_cmd(char *key)
-{
-	printf("Get command, key %s.\n", key);
-}
-
 
 static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 {
@@ -82,7 +68,7 @@ static int parse_command(char *line)
 
 
 /* Read configuration file */
-static int read_cfg_file(void)
+static int read_cfg_file(int *servers_no)
 {
 	FILE *fp;
 	char *line = NULL;
@@ -98,19 +84,38 @@ static int read_cfg_file(void)
 	while ((read = getline(&line, &len, fp)) != -1) {
 		line[strlen(line) - 1] = 0;
 
-		strncpy(servers[lines++], line, strlen(line));
+		strncpy(servers[lines++].ip, line, strlen(line));
 	}
 
 	fclose(fp);
 	if (line)
 		free(line);
+	*servers_no = lines;
+	return 0;
+}
+
+
+/* Read servers' IPs, compute hashes, connect to servers */
+static int init_servers(void)
+{
+	int servers_no;
+
+	/* Read IP addresses of all the servers */
+	if (read_cfg_file(&servers_no)) {
+		printf("Error initializing servers\n");
+		return 1;
+	}
+	printf("Read %d servers\n", servers_no);
+
+	compute_servers_hashes(servers_no);
+
 	return 0;
 }
 
 int main(int argc, char **argv) {
 	char line[CMD_SIZE];
 
-	if (read_cfg_file())
+	if (init_servers())
 		return 1;
 
 	printf("%s\n", usage);

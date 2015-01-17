@@ -1,13 +1,12 @@
 #ifndef __DHT_CLIENT_H__
 #define __DHT_CLIENT_H__
 
+
 #define CMD_SIZE		128
 #define CMD_MAX_WORDS		3
 #define PUT_CMD			"put"
 #define GET_CMD			"get"
 #define EXIT_CMD		"exit"
-#define MAX_SERVERS_NO		10
-#define MAX_SERVER_LEN		33
 
 #define CONFIG_FILE		"servers.cfg"
 
