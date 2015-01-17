@@ -10,6 +10,9 @@ static char *usage = "DHT. Usage:\n> put key value;\n\
 
 static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 {
+	if (len == 0)
+		return;
+
 	/* Execute the PUT command */
 	if (!strncmp(cmds[0], PUT_CMD, strlen(PUT_CMD))) {
 
