@@ -142,37 +142,66 @@ static int memcached_cmd(char *key, char **val, char *ip, int cmd)
 	}
 
 	if (error != MEMCACHED_SUCCESS) {
-		printf("Unable to perform operation of memcached\n");
+		printf("Unable to perform memcached operation on %s\n", ip);
 		ret = -1;
+		goto out;
 	}
+	printf("Successful memcached operation on %s\n", ip);
 
 out:
 	memcached_free(memc);
 	return ret;
 }
 
+
 /* Execute the PUT command */
 int put_cmd(char *key, char *val)
 {
-	int i, idx_md5, idx_sha1, ret = 0;
+	int i, idx_md5, idx_sha1, ret_sha1 = 0, ret_md5 = 0;
 
 	printf("Put command, key %s, len %d, val %s.\n",
 			key, (int)strlen(key), val);
 
-	get_md5_index(key, &idx_md5);
 	get_sha1_index(key, &idx_sha1);
-	printf("Got server %d for MD5 hashing\n", idx_md5);
-	printf("Got server %d for SHA1 hashing\n", idx_sha1);
+	get_md5_index(key, &idx_md5);
+	printf("Got server %d, ip %s for SHA1 hashing\n",
+			idx_sha1, sha1_servers[idx_sha1]->ip);
+	printf("Got server %d, ip %s for MD5 hashing\n",
+			idx_md5, md5_servers[idx_md5]->ip);
 
 
 	/* Put value with memcached */
-	ret = memcached_cmd(key, &val, sha1_servers[idx_sha1]->ip,
+	/* Write first using the SHA1 hash */
+	ret_sha1 = memcached_cmd(key, &val, sha1_servers[idx_sha1]->ip,
 			MEMCACHED_PUT);
-	if (idx_md5 != idx_sha1)
-		ret = memcached_cmd(key, &val, md5_servers[idx_md5]->ip,
-				MEMCACHED_PUT);
 
-	return ret;
+	/* If the node is down find a successor */
+	while (ret_sha1) {
+		ret_sha1 = memcached_cmd(key, &val,
+				sha1_servers[++idx_sha1]->ip,
+				MEMCACHED_PUT);
+		if (idx_sha1 >= servers_no)
+			break;
+	}
+
+
+	/* Replicate with MD5 */
+	/* If the MD5 and SHA1 indexes are the same consider the next server */
+	if (idx_md5 == idx_sha1)
+		idx_sha1 = (idx_sha1 + 1) % servers_no;
+
+	ret_md5 = memcached_cmd(key, &val, md5_servers[idx_md5]->ip,
+			MEMCACHED_PUT);
+	/* If the node is down find a successor */
+	while (ret_md5) {
+		ret_md5 = memcached_cmd(key, &val,
+				md5_servers[++idx_md5]->ip,
+				MEMCACHED_PUT);
+		if (idx_md5 >= servers_no)
+			break;
+	}
+
+	return ret_sha1 & ret_md5;
 }
 
 
@@ -186,18 +215,43 @@ int get_cmd(char *key, char **val, size_t *val_len)
 
 	printf("Get command, key %s, len %d\n", key, (int)strlen(key));
 
-	get_md5_index(key, &idx_md5);
 	get_sha1_index(key, &idx_sha1);
-	printf("Got server %d for MD5 hashing\n", idx_md5);
-	printf("Got server %d for SHA1 hashing\n", idx_sha1);
+	get_md5_index(key, &idx_md5);
+	printf("Got server %d, ip %s for SHA1 hashing\n",
+			idx_sha1, sha1_servers[idx_sha1]->ip);
+	printf("Got server %d, ip %s for MD5 hashing\n",
+			idx_md5, md5_servers[idx_md5]->ip);
 
 
 	/* Get value with memcached */
 	ret = memcached_cmd(key, val, sha1_servers[idx_sha1]->ip,
 			MEMCACHED_GET);
-	if (ret)
-		ret = memcached_cmd(key, val, md5_servers[idx_md5]->ip,
+	/* If the node is down find a successor */
+	while (ret) {
+		ret = memcached_cmd(key, val,
+				sha1_servers[++idx_sha1]->ip,
 				MEMCACHED_GET);
+		if (idx_sha1 >= servers_no)
+			break;
+	}
+
+	/* Try the backup with MD5 if SHA1 server failed */
+	if (ret == 0)
+		return ret;
+
+	/* If the MD5 and SHA1 indexes are the same consider the next server */
+	if (idx_md5 == idx_sha1)
+		idx_sha1 = (idx_sha1 + 1) % servers_no;
+	ret = memcached_cmd(key, val, md5_servers[idx_md5]->ip,
+			MEMCACHED_GET);
+	/* If the node is down find a successor */
+	while (ret) {
+		ret = memcached_cmd(key, val,
+				md5_servers[++idx_md5]->ip,
+				MEMCACHED_GET);
+		if (idx_md5 >= servers_no)
+			break;
+	}
 
 	return ret;
 }
