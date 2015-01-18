@@ -23,10 +23,12 @@ struct server {
 	unsigned char ip[MAX_IP_LEN];
 	unsigned char md5[MD5_SIZE];
 	unsigned char sha1[SHA1_SIZE];
+	unsigned long objects;
 	int enabled;
 };
 
 extern struct server servers[MAX_SERVERS_NO];
+extern int servers_no;
 
 int put_cmd(char *key, char *val);
 int get_cmd(char *key, char **val, size_t *val_len);

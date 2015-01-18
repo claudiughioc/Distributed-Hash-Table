@@ -11,7 +11,7 @@ static char *usage = "DHT. Usage:\n> put key value;\n\
 static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 {
 	char *value;
-	int ret;
+	int ret, i;
 	size_t value_length;
 
 	if (len == 0)
@@ -47,6 +47,13 @@ static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 			return;
 		}
 		pr_msg(value);
+		return;
+	}
+
+	/* Execute the STAT command */
+	if (!strncmp(cmds[0], STAT_CMD, strlen(STAT_CMD))) {
+		for (i = 0; i < servers_no; i++)
+			printf("Server %d, objects %lu\n", i, servers[i].objects);
 		return;
 	}
 
