@@ -8,6 +8,8 @@
 #define GET_CMD			"get"
 #define STAT_CMD		"stat"
 #define EXIT_CMD		"exit"
+#define THROUGHPUT		"throughput"
+#define MEGA			1048576
 
 #define CONFIG_FILE		"servers.cfg"
 

@@ -8,6 +8,29 @@
 static char *usage = "DHT. Usage:\n> put key value;\n\
 > get key;\n> exit;";
 
+static void generate_data(char **data)
+{
+	data = malloc(MEGA * sizeof(char));
+	if (!data) {
+		printf("Unable to allocate data\n");
+		return;
+	}
+
+	printf("Initializing data\n");
+
+}
+
+
+static void test_throughput(void)
+{
+	char *data;
+	printf("Testing the throughput\n");
+
+	generate_data(&data);
+
+}
+
+
 static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 {
 	char *value;
@@ -46,14 +69,18 @@ static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 			pr_msg("Unable to get the value");
 			return;
 		}
+		successful_gets++;
 		pr_msg(value);
 		return;
 	}
 
 	/* Execute the STAT command */
 	if (!strncmp(cmds[0], STAT_CMD, strlen(STAT_CMD))) {
+		printf("\n");
 		for (i = 0; i < servers_no; i++)
 			printf("Server %d, objects %lu\n", i, servers[i].objects);
+		printf("Successful gets: %d\n", successful_gets);
+
 		return;
 	}
 
@@ -136,6 +163,9 @@ int main(int argc, char **argv) {
 
 	if (init_servers())
 		return 1;
+
+	if (argc == 2 && !strcmp(argv[1], THROUGHPUT))
+		test_throughput();
 
 	printf("%s\n", usage);
 	pr_console();

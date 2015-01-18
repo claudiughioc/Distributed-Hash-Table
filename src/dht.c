@@ -4,6 +4,7 @@ struct server *md5_servers[MAX_SERVERS_NO],
 	      *sha1_servers[MAX_SERVERS_NO];
 struct server servers[MAX_SERVERS_NO];
 int servers_no, md5_first, sha1_first;
+int successful_gets;
 
 static void print_hash(unsigned char *hash, int len) {
 	int i = 0;
@@ -117,14 +118,14 @@ static int memcached_cmd(char *key, char **val, struct server *sv, int cmd)
 	/* Create memcached context */
 	if ((memc = memcached_create(NULL)) == NULL) {
 		printf("Error creating memcached context\n");
-		return -1;
+		return ERR_NO_CONN;
 	}
 
 	/* Connecting to the server */
 	if ((error = memcached_server_add(memc, sv->ip, 0))
 			!= MEMCACHED_SUCCESS) {
 		printf("Error connecting to server %s\n", sv->ip);
-		ret = -1;
+		ret = ERR_NO_CONN;
 		goto out;
 	}
 
@@ -138,12 +139,12 @@ static int memcached_cmd(char *key, char **val, struct server *sv, int cmd)
 				&val_len, &flags, &error);
 		break;
 	default:
-		ret = -1;
+		ret = ERR_NO_CONN;
 	}
 
 	if (error != MEMCACHED_SUCCESS) {
 		printf("Unable to perform memcached operation on %s\n", sv->ip);
-		ret = -1;
+		ret = ERR_NOT_FOUND;
 		goto out;
 	}
 	printf("Successful memcached operation on %s\n", sv->ip);
@@ -182,7 +183,7 @@ int put_cmd(char *key, char *val)
 		ret_sha1 = memcached_cmd(key, &val,
 				sha1_servers[++idx_sha1],
 				MEMCACHED_PUT);
-		if (idx_sha1 >= servers_no)
+		if (idx_sha1 == servers_no - 1)
 			break;
 	}
 
@@ -199,7 +200,7 @@ int put_cmd(char *key, char *val)
 		ret_md5 = memcached_cmd(key, &val,
 				md5_servers[++idx_md5],
 				MEMCACHED_PUT);
-		if (idx_md5 >= servers_no)
+		if (idx_md5 == servers_no - 1)
 			break;
 	}
 
@@ -207,7 +208,7 @@ int put_cmd(char *key, char *val)
 }
 
 
-/* Execute the PUT command */
+/* Execute the GET command */
 int get_cmd(char *key, char **val, size_t *val_len)
 {
 	int i, idx_md5, idx_sha1, ret = 0;
@@ -229,11 +230,11 @@ int get_cmd(char *key, char **val, size_t *val_len)
 	ret = memcached_cmd(key, val, sha1_servers[idx_sha1],
 			MEMCACHED_GET);
 	/* If the node is down find a successor */
-	while (ret) {
+	while (ret == ERR_NO_CONN) {
 		ret = memcached_cmd(key, val,
 				sha1_servers[++idx_sha1],
 				MEMCACHED_GET);
-		if (idx_sha1 >= servers_no)
+		if (idx_sha1 == servers_no - 1)
 			break;
 	}
 
@@ -247,11 +248,11 @@ int get_cmd(char *key, char **val, size_t *val_len)
 	ret = memcached_cmd(key, val, md5_servers[idx_md5],
 			MEMCACHED_GET);
 	/* If the node is down find a successor */
-	while (ret) {
+	while (ret == ERR_NO_CONN) {
 		ret = memcached_cmd(key, val,
 				md5_servers[++idx_md5],
 				MEMCACHED_GET);
-		if (idx_md5 >= servers_no)
+		if (idx_md5 == servers_no - 1)
 			break;
 	}
 

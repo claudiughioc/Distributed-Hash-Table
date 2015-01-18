@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <openssl/md5.h>
 #include <openssl/md5.h>
 #include <libmemcached/memcached.h>
@@ -18,6 +19,8 @@
 
 #define MEMCACHED_PUT		0
 #define MEMCACHED_GET		1
+#define ERR_NO_CONN		-1
+#define ERR_NOT_FOUND		-2
 
 struct server {
 	unsigned char ip[MAX_IP_LEN];
@@ -28,7 +31,7 @@ struct server {
 };
 
 extern struct server servers[MAX_SERVERS_NO];
-extern int servers_no;
+extern int servers_no, successful_gets;
 
 int put_cmd(char *key, char *val);
 int get_cmd(char *key, char **val, size_t *val_len);
