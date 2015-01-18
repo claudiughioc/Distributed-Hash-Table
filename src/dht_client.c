@@ -10,6 +10,10 @@ static char *usage = "DHT. Usage:\n> put key value;\n\
 
 static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 {
+	char *value;
+	int ret;
+	size_t value_length;
+
 	if (len == 0)
 		return;
 
@@ -23,7 +27,8 @@ static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 			return;
 		}
 
-		put_cmd(cmds[1], cmds[2]);
+		if ((ret = put_cmd(cmds[1], cmds[2])))
+			pr_msg("Unable to put value\n");
 		return;
 	}
 
@@ -37,7 +42,11 @@ static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 			return;
 		}
 
-		get_cmd(cmds[1]);
+		if ((ret = get_cmd(cmds[1], &value, &value_length))) {
+			pr_msg("Unable to get the value");
+			return;
+		}
+		pr_msg(value);
 		return;
 	}
 

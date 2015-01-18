@@ -15,6 +15,7 @@ static void print_hash(unsigned char *hash, int len) {
 }
 
 
+/* Compare two hashes */
 static int compare_hash(unsigned char *hash1, unsigned char *hash2, int len)
 {
 	int result, i;
@@ -104,10 +105,56 @@ static void get_sha1_index(char *key, int *index)
 }
 
 
-/* Execute the PUT command */
-void put_cmd(char *key, char *val)
+/* Perform a memcached operation */
+static int memcached_cmd(char *key, char **val, char *ip, int cmd)
 {
-	int i, idx_md5, idx_sha1;
+	int ret = 0;
+	size_t val_len;
+	uint32_t flags = 0;
+	memcached_st *memc;
+	memcached_return_t error;
+
+	/* Create memcached context */
+	if ((memc = memcached_create(NULL)) == NULL) {
+		printf("Error creating memcached context\n");
+		return -1;
+	}
+
+	/* Connecting to the server */
+	if ((error = memcached_server_add(memc, ip, 0))
+			!= MEMCACHED_SUCCESS) {
+		printf("Error connecting to server %s\n", ip);
+		ret = -1;
+		goto out;
+	}
+
+	switch (cmd) {
+	case MEMCACHED_PUT:
+		error = memcached_set(memc, key, strlen(key),
+				*val, strlen(*val), 0, 0);
+		break;
+	case MEMCACHED_GET:
+		*val = memcached_get(memc, key, strlen(key),
+				&val_len, &flags, &error);
+		break;
+	default:
+		ret = -1;
+	}
+
+	if (error != MEMCACHED_SUCCESS) {
+		printf("Unable to perform operation of memcached\n");
+		ret = -1;
+	}
+
+out:
+	memcached_free(memc);
+	return ret;
+}
+
+/* Execute the PUT command */
+int put_cmd(char *key, char *val)
+{
+	int i, idx_md5, idx_sha1, ret = 0;
 
 	printf("Put command, key %s, len %d, val %s.\n",
 			key, (int)strlen(key), val);
@@ -116,19 +163,43 @@ void put_cmd(char *key, char *val)
 	get_sha1_index(key, &idx_sha1);
 	printf("Got server %d for MD5 hashing\n", idx_md5);
 	printf("Got server %d for SHA1 hashing\n", idx_sha1);
+
+
+	/* Put value with memcached */
+	ret = memcached_cmd(key, &val, sha1_servers[idx_sha1]->ip,
+			MEMCACHED_PUT);
+	if (idx_md5 != idx_sha1)
+		ret = memcached_cmd(key, &val, md5_servers[idx_md5]->ip,
+				MEMCACHED_PUT);
+
+	return ret;
 }
 
 
 /* Execute the PUT command */
-void get_cmd(char *key)
+int get_cmd(char *key, char **val, size_t *val_len)
 {
-	int i, idx_md5, idx_sha1;
+	int i, idx_md5, idx_sha1, ret = 0;
+	memcached_st *memc;
+	uint32_t flags = 0;
+	memcached_return_t error;
+
 	printf("Get command, key %s, len %d\n", key, (int)strlen(key));
 
 	get_md5_index(key, &idx_md5);
 	get_sha1_index(key, &idx_sha1);
 	printf("Got server %d for MD5 hashing\n", idx_md5);
 	printf("Got server %d for SHA1 hashing\n", idx_sha1);
+
+
+	/* Get value with memcached */
+	ret = memcached_cmd(key, val, sha1_servers[idx_sha1]->ip,
+			MEMCACHED_GET);
+	if (ret)
+		ret = memcached_cmd(key, val, md5_servers[idx_md5]->ip,
+				MEMCACHED_GET);
+
+	return ret;
 }
 
 

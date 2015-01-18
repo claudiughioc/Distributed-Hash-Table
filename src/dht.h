@@ -6,6 +6,7 @@
 #include <string.h>
 #include <openssl/md5.h>
 #include <openssl/md5.h>
+#include <libmemcached/memcached.h>
 
 #define MAX_SERVERS_NO		10
 #define MAX_IP_LEN		33
@@ -14,6 +15,9 @@
 #define SHA1_SIZE		20
 #define MD5_HASH		0
 #define SHA1_HASH		1
+
+#define MEMCACHED_PUT		0
+#define MEMCACHED_GET		1
 
 struct server {
 	unsigned char ip[MAX_IP_LEN];
@@ -24,8 +28,8 @@ struct server {
 
 extern struct server servers[MAX_SERVERS_NO];
 
-void put_cmd(char *key, char *val);
-void get_cmd(char *key);
+int put_cmd(char *key, char *val);
+int get_cmd(char *key, char **val, size_t *val_len);
 void compute_servers_hashes(int servers_no);
 
 #endif

@@ -1,5 +1,5 @@
 CC=gcc
-LDFLAGS=-lcrypto
+LDFLAGS=-lcrypto -lmemcached
 CFLAGS=-Wall
 
 dht:
