@@ -2,8 +2,8 @@
 reset
 set title "Distribution of 1000 Objects"
 set terminal png
-set xlabel "Nr Objects"
-set ylabel "Server Index"
+set xlabel "Server Index"
+set ylabel "Nr Objects"
 set xrange[0:11]
 
 
