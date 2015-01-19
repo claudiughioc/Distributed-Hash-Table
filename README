@@ -1,0 +1,100 @@
+GHIOC CONSTANTIN CLAUDIU - SCPD
+
+
+Challenge 4: Distributed Hash Table
+
+
+1. Usage
+2. Implementation
+3. Testing and Evaluation
+
+
+1. Usage
+	"src" contains the C source files and experiments scripts
+	cd src
+	make
+	./dht_client
+	Insert commands in the terminal, such as:
+	- put key1 value1
+	- get key1
+	- stat
+
+	Check evaluation results in "results", *.png files;
+
+	To run the simulation with mininet, use the topology file
+	"resources/challenge4-topo.py", run ./simulate.sh to start the
+	network simulation. On each node I ran "hi ./configure.sh i" to
+	rate limit the interface and start memcached. Open xterm on
+	"client" and use the "dht_client".
+
+
+2. Implementation
+	The interface looks like a terminal and continuously receives
+and runs commands. Each command calls a function in "dht.c".
+	Before the user starts introducing commands the list of servers
+is initialized. The IP addresses of the servers are read from the
+"servers.cfg" file and a structure is created for each of the servers.
+Each structure holds the IP address, the MD5 and SHA1 hashes, the number
+of objects placed on each server and an "enabled" flag. In the
+initialization sequence the MD5 and SHA1 hashes are computed and I
+created two separate list of pointers two the server specific
+structures, each sorted by the MD5 and the SHA1 hashes respectively.
+These lists are used in the lookup section. There is no waste of memory
+here as the structures are not duplicated in two separate list, only the
+pointers are held in these list.
+
+	In the lookup section for PUT and GET commands:
+	- the MD5 and SHA1 hashes are computed for the key
+	- the value is placed on the server whose hash is greater than
+	  the key's hash but closest to this value (the successor);
+	- the successor is determined using a modified version of binary
+	  search; the code keeps searching on intervals smaller and
+	  smaller until it finds the successor;
+	- firstly the algorithm places the value on the server indicated
+	  by the SHA1 hash then on the one determined using the MD5
+	  hash;
+	- if the servers indicated by the two hashes are the same
+	  (collision case) the value will be placed on the found server
+	  and on the next one in the order indicated by the MD5 hash
+	  function; this situation is dealt with both in PUT and in GET
+	  cases;
+	- after a server is chosen for a get/put command, a memcached
+	  context is created, the server IP address is added to its list
+	  and the memcached operation is performed;
+	- if the memcached operation failed (put or get) the code tries to perform
+	  the operation on the next servers (in the order implied by the
+	  two hash functions respectively) until it finds one that
+	  responds or it reaches the end of the list;
+
+	The "stat" command is used for evaluation purposes to determine
+	the number of values held by each server.
+
+
+
+3. Testing and Evaluation
+Throughput:
+	I transfered 1MB of data using different chunk sizes:
+	10,000 put operations with  100B values - 7m 59s
+	 1,000 put operations with   1KB values - 1m 31s
+	   100 put operations with  10KB values -     4s
+	    10 put operations with 100KB values -   0.9s
+	     1 put operation  with   1MB value  -   0.4s
+	The fastest way was to use directly the 1MB sized value. See
+	graph in "results/throughput.png"
+
+Distribution:
+	I performed 1000 put operations, which meant 2000 memcached
+operations and the number of objects held by each server was stored in a
+counter and displayed with the "stat" command.
+	See the distribution results in "results/distribution.png"
+	Some servers hold more objects than the other because the hash
+values of their IP address are close to the neighbor's.
+
+Availability:
+	I performed 100 put operations with all the servers online. I
+started closing links to servers one by one and measured how many
+objects are still available. See graph in "results/availability.png".
+The slope is not constant because I would close servers with different
+capacity. For example, after shutting down server 8 the availability
+decreased from 87 to 59.
+	
