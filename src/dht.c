@@ -162,8 +162,8 @@ int put_cmd(char *key, char *val)
 {
 	int i, idx_md5, idx_sha1, ret_sha1 = 0, ret_md5 = 0;
 
-	printf("Put command, key %s, len %d, val %s.\n",
-			key, (int)strlen(key), val);
+	printf("Put command, key %s, len %d, val %si len %d.\n",
+			key, (int)strlen(key), val, (int)strlen(val));
 
 	get_sha1_index(key, &idx_sha1);
 	get_md5_index(key, &idx_md5);

@@ -5,33 +5,13 @@
 #include "dht_client.h"
 #include "dht.h"
 
+char line[CMD_SIZE];
+char cmds[CMD_MAX_WORDS][CMD_SIZE];
+
 static char *usage = "DHT. Usage:\n> put key value;\n\
 > get key;\n> exit;";
 
-static void generate_data(char **data)
-{
-	data = malloc(MEGA * sizeof(char));
-	if (!data) {
-		printf("Unable to allocate data\n");
-		return;
-	}
-
-	printf("Initializing data\n");
-
-}
-
-
-static void test_throughput(void)
-{
-	char *data;
-	printf("Testing the throughput\n");
-
-	generate_data(&data);
-
-}
-
-
-static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
+static void execute_command(int len)
 {
 	char *value;
 	int ret, i;
@@ -93,7 +73,6 @@ static void execute_command(char cmds[CMD_MAX_WORDS][CMD_SIZE], int len)
 static int parse_command(char *line)
 {
 	int count = 0;
-	char cmds[CMD_MAX_WORDS][CMD_SIZE];
 	char *word = strtok(line, " \n");
 
 	/* Parse the command and find the arguments */
@@ -107,7 +86,7 @@ static int parse_command(char *line)
 		count++;
 	}
 
-	execute_command(cmds, count);
+	execute_command(count);
 
 	return 0;
 }
@@ -159,13 +138,8 @@ static int init_servers(void)
 }
 
 int main(int argc, char **argv) {
-	char line[CMD_SIZE];
-
 	if (init_servers())
 		return 1;
-
-	if (argc == 2 && !strcmp(argv[1], THROUGHPUT))
-		test_throughput();
 
 	printf("%s\n", usage);
 	pr_console();
